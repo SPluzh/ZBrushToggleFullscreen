@@ -57,6 +57,7 @@ Press `Ctrl+F11` to fit canvas to current window size.
 | `Ctrl+F11` | Fit Canvas to Window |
 
 ---
+![](attachments/ZBrush_lpywMceML3.png)
 
 ## Fullscreen Settings
 

@@ -28,7 +28,7 @@ ZBrush/ZStartup/ZPlugs64/
 ZStartup/ZPlugs64/
 ├── ToggleFullscreen.zsc
 └── ToggleFullscreenData/
-└── FullscreenSettings.zvr (auto-created)
+      └── FullscreenSettings.zvr (auto-created)
 ```
 
 ---

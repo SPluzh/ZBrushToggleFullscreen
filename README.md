@@ -23,6 +23,14 @@ ZBrush/ZStartup/ZPlugs64/
 2. Restart ZBrush
 3. Plugin appears in **ZPlugin → ToggleFullscreen**
 
+## File Structure
+```
+ZStartup/ZPlugs64/
+├── ToggleFullscreen.zsc
+└── ToggleFullscreenData/
+└── FullscreenSettings.zvr (auto-created)
+```
+
 ---
 
 ## Usage
@@ -63,6 +71,8 @@ Configure what gets hidden when entering fullscreen:
 | Hide Palettes | Floating palettes (same as Tab) |
 | Hide Left Tray | Collapse left tray |
 | Hide Right Tray | Collapse right tray |
+> ⚠️ **Hide Left Tray / Hide Right Tray** — collapsing trays may cause
+> brief UI flickering during transition. This is expected behavior.
 
 ---
 

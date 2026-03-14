@@ -1,0 +1,200 @@
+[IConfig,4.8]
+[ISubPalette,"ZPlugin:ToggleFullscreen"]
+[ISubPalette,"ZPlugin:ToggleFullscreen:Fullscreen Settings"]
+[ISubPalette,"ZPlugin:ToggleFullscreen:FitCanvas Settings"]
+
+[VarDef, gIsUiHidden, 0]
+[VarDef, WinWidth, 0]
+[VarDef, StartPos, 0]
+// Array: 0=HideMenus, 1=HideTitle, 2=HideNotes, 3=HideBottom, 4=HideUndo, 5=HideFloat, 6=HideLeftTray, 7=HideRightTray, 8=DisablePro
+[VarDef, gSet(9), 1]
+
+[RoutineDef, InitPlugin,
+	[If, [FileExists, "ToggleFullscreenData/FullscreenSettings.zvr"],
+		[VarLoad, gSet, "ToggleFullscreenData/FullscreenSettings.zvr"]
+	]
+]
+[RoutineCall, InitPlugin]
+
+[RoutineDef, SaveSettings,
+	[VarSave, gSet, "ToggleFullscreenData/FullscreenSettings.zvr"]
+]
+
+[RoutineDef, RightTrayClose,
+    [VarSet, StartPosition, [IHPos, 1001, 1]]
+    [Loop, 5,
+        [VarSet, CurrentPosition, [IHPos, 1001, 1]]
+        [If, CurrentPosition = StartPosition,
+            [IClick, 1001]
+        ,
+            [LoopExit]
+        ]
+    ]
+    [VarSet, NewPosition, [IHPos, 1001, 1]]
+    [If, NewPosition < StartPosition,
+        [VarSet, StartPosition, NewPosition]
+        [Loop, 5,
+            [VarSet, CurrentPosition, [IHPos, 1001, 1]]
+            [If, CurrentPosition = StartPosition,
+                [IClick, 1001]
+            ,
+                [LoopExit]
+            ]
+        ]
+    ]
+]
+
+[RoutineDef, LeftTrayClose,
+    [VarSet, StartPosition, [IHPos, 1000, 1]]
+    [Loop, 5,
+        [VarSet, CurrentPosition, [IHPos, 1000, 1]]
+        [If, CurrentPosition = StartPosition,
+            [IClick, 1000]
+        ,
+            [LoopExit]
+        ]
+    ]
+    [VarSet, NewPosition, [IHPos, 1000, 1]]
+    [If, NewPosition > StartPosition,
+        [VarSet, StartPosition, NewPosition]
+        [Loop, 5,
+            [VarSet, CurrentPosition, [IHPos, 1000, 1]]
+            [If, CurrentPosition = StartPosition,
+                [IClick, 1000]
+            ,
+                [LoopExit]
+            ]
+        ]
+    ]
+]
+
+[RoutineDef, FitCanvasToWindow,
+    [VarSet, isEdit, 0]
+    [VarSet, docW, [IWidth, 1004]]
+    [VarSet, docH, [IHeight, 1004]]
+    [MVarDef, Tmp_Transform, 9, 0]
+    [If, [IsEnabled, Transform:Edit],
+        [VarSet, isEdit, 1]
+        [MTransformGet, Tmp_Transform, 0]
+        [IUnPress, Transform:Edit]
+        [IPress, Layer:Clear]
+    ]
+    [IUnPress, Document:WSize]
+    [If, #gSet(8), [IUnPress, Document:Pro]]
+    [ISet, Document:Width, docW]
+    [ISet, Document:Height, docH]
+    [IKeyPress, 13, [IPress, Document:Resize]]
+    [If, isEdit,
+        [IPress, Stroke:DragRect]
+        [IClick, 1004, 20, 20, 20, 40]
+        [IPress, Transform:Edit]
+        [MTransformSet, Tmp_Transform, 0]
+    ]
+]
+
+// =============================================
+// BUTTONS
+// =============================================
+
+[IButton, "ZPlugin:ToggleFullscreen:Fullscreen", "Toggle Fullscreen View",
+	[If, #gIsUiHidden,
+		[If, #gSet(4), [IPress,   "Preferences:Undo History:Show Undo Selector"]]
+		[If, #gSet(0), [IShow,    "1007"]]
+		[If, #gSet(1), [IShow,    "1008"]]
+		[If, #gSet(2), [IShow,    "1011"]]
+		[If, #gSet(3), [IShow,    "1002"]]
+		[If, #gSet(5), [IPress,   "Preferences:Interface:Float Menu"]]
+		[VarSet, gIsUiHidden, 0]
+	,
+		[If, #gSet(4), [IUnPress, "Preferences:Undo History:Show Undo Selector"]]
+		[If, #gSet(0), [IHide,    "1007"]]
+		[If, #gSet(1), [IHide,    "1008"]]
+		[If, #gSet(2), [IHide,    "1011"]]
+		[If, #gSet(3), [IHide,    "1002"]]
+		[If, #gSet(5), [IUnPress, "Preferences:Interface:Float Menu"]]
+		[If, #gSet(6), [RoutineCall, LeftTrayClose]]
+		[If, #gSet(7), [RoutineCall, RightTrayClose]]
+		[VarSet, gIsUiHidden, 1]
+	]
+,, 0.5]
+
+[IButton, "ZPlugin:ToggleFullscreen:Fit Canvas", "Fit Canvas to Window size",
+    [RoutineCall, FitCanvasToWindow]
+,, 0.5]
+
+// =============================================
+// FULLSCREEN SETTINGS
+// =============================================
+
+[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Menus", #gSet(0), "Hide top menu bar",
+	[VarSet, gSet(0), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(0), 0] [RoutineCall, SaveSettings]
+, 0, 0.5]
+[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Menus"]
+
+[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Title", #gSet(1), "Hide ZBrush title bar",
+	[VarSet, gSet(1), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(1), 0] [RoutineCall, SaveSettings]
+, 0, 0.5]
+[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Title"]
+
+[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Notes", #gSet(2), "Hide top-left notes",
+	[VarSet, gSet(2), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(2), 0] [RoutineCall, SaveSettings]
+, 0, 0.5]
+[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Notes"]
+
+[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Bottom", #gSet(3), "Hide bottom tray edge",
+	[VarSet, gSet(3), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(3), 0] [RoutineCall, SaveSettings]
+, 0, 0.5]
+[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Bottom"]
+
+[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide History", #gSet(4), "Hide Undo History selector",
+	[VarSet, gSet(4), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(4), 0] [RoutineCall, SaveSettings]
+, 0, 0.5]
+[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide History"]
+
+[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Palettes", #gSet(5), "Hide Floating Palettes",
+	[VarSet, gSet(5), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(5), 0] [RoutineCall, SaveSettings]
+, 0, 0.5]
+[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Palettes"]
+
+[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Left Tray", #gSet(6), "Collapse left tray during Fullscreen",
+	[VarSet, gSet(6), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(6), 0] [RoutineCall, SaveSettings]
+, 0, 0.5]
+[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Left Tray"]
+
+[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Right Tray", #gSet(7), "Collapse right tray during Fullscreen",
+	[VarSet, gSet(7), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(7), 0] [RoutineCall, SaveSettings]
+, 0, 0.5]
+[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Right Tray"]
+
+// =============================================
+// FIT CANVAS SETTINGS
+// =============================================
+
+[ISwitch, "ZPlugin:ToggleFullscreen:FitCanvas Settings:Disable Pro (Proportional)", #gSet(8), "Disable Document:Pro when fitting canvas to window",
+	[VarSet, gSet(8), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(8), 0] [RoutineCall, SaveSettings]
+, 0, 1]
+[IEnable, "ZPlugin:ToggleFullscreen:FitCanvas Settings:Disable Pro (Proportional)"]
+
+// =============================================
+// HOT KEYS
+// =============================================
+[ISetHotkey, "ZPlugin:ToggleFullscreen:Fullscreen", 90]// F11
+[ISetHotkey, "ZPlugin:ToggleFullscreen:Fit Canvas", 602]// Ctrl+F11

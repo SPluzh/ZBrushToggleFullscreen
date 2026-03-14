@@ -3,6 +3,8 @@
 A ZBrush plugin that toggles a clean fullscreen view by hiding UI elements,
 and fits the canvas to window size.
 
+![ToggleFullscreen Preview](ZBrush_MkXrDx9EjP-ezgif.com-optimize.gif)
+
 ---
 
 ## Features

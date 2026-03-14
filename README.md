@@ -16,6 +16,7 @@ and fits the canvas to window size.
 
 ## Installation
 
+0. Download the latest release from the [Releases](../../releases) page
 1. Copy `ToggleFullscreen.zsc` and `ToggleFullscreenData/` folder to:
 ```
 ZBrush/ZStartup/ZPlugs64/

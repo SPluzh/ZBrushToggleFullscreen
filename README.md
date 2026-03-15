@@ -1,4 +1,4 @@
-# ToggleFullscreen — ZBrush Plugin
+# ToggleFullscreen ZBrush Plugin
 
 A ZBrush plugin that toggles a clean fullscreen view by hiding UI elements,
 and fits the canvas to window size.
@@ -9,9 +9,9 @@ and fits the canvas to window size.
 
 ## Features
 
-- **Fullscreen toggle** — hide/show selected UI elements with one hotkey
-- **Fit Canvas** — resize canvas to fit current window
-- Configurable — choose which elements to hide
+- **Fullscreen toggle** - hide/show selected UI elements with one hotkey
+- **Fit Canvas** - resize canvas to fit current window
+- Configurable - choose which elements to hide
 - Settings are saved between sessions
 
 ---

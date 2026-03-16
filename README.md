@@ -18,6 +18,8 @@ and fits the canvas to window size.
 
 ## Installation
 
+### Option A: Plugin (recommended)
+
 0. Download the latest release from the [Releases](../../releases) page
 1. Copy `ToggleFullscreen.zsc` and `ToggleFullscreenData/` folder to:
 ```
@@ -26,12 +28,22 @@ ZBrush/ZStartup/ZPlugs64/
 2. Restart ZBrush
 3. Plugin appears in **ZPlugin → ToggleFullscreen**
 
+### Option B: Load as script
+
+1. In ZBrush open **ZScript → Load**
+2. Select `ToggleFullscreen.txt`
+3. Plugin appears in **ZPlugin → ToggleFullscreen**
+
+> **Note:** After loading the `.txt` file, ZBrush will automatically create a `ToggleFullscreen.zsc` file next to it. You can then copy this `.zsc` file to `ZBrush/ZStartup/ZPlugs64/` for permanent installation (same as Option A).
+
+> **Important:** The `ToggleFullscreenData/` folder must exist next to the script file for settings saving to work. Without it, your fullscreen preferences will not be saved between sessions.
+
 ## File Structure
 ```
 ZStartup/ZPlugs64/
 ├── ToggleFullscreen.zsc
 └── ToggleFullscreenData/
-      └── FullscreenSettings.zvr (auto-created)
+      └── FullscreenSettings.zvr (auto-created on first settings change)
 ```
 
 ---

@@ -1,14 +1,79 @@
+// =============================================================================
+// Toggle Fullscreen Plugin for ZBrush
+// Author: SPluzh
+// =============================================================================
+//
+// Description:
+//   A ZBrush plugin that provides a clean fullscreen
+//   experience by toggling UI elements visibility.
+//   Also includes a Fit Canvas utility to resize the
+//   document canvas to fit the current window.
+//
+// Features:
+//   - Toggle top menu bar, title bar, notes, bottom tray
+//   - Toggle floating palettes and undo history selector
+//   - Collapse/restore left and right trays
+//   - Remembers tray state before entering fullscreen
+//   - Fit canvas to window with optional Pro mode control
+//
+// Version History:
+//   v1.0 - Initial release
+//     - Toggle fullscreen with configurable UI element hiding
+//     - Hide/Show: menus, title bar, notes, bottom bar, undo history,
+//       floating palettes, left tray, right tray
+//     - Fit Canvas to window size with optional Pro (proportional) disable
+//     - Settings saved to file between sessions
+//     - Hotkeys: F11 (Fullscreen), Ctrl+F11 (Fit Canvas)
+//
+//   v1.1 - Tray state memory & IFreeze
+//     - Added IFreeze to prevent UI flickering during toggle
+//     - Added LeftTrayOpen and RightTrayOpen routines
+//     - Tray open/closed state is now remembered before entering fullscreen
+//     - On exit from fullscreen, trays are restored to their previous state
+//       (only reopened if they were open before)
+//
+// =============================================================================
+
 [IConfig,4.8]
+
+// Create plugin sub-palettes in ZPlugin menu
 [ISubPalette,"ZPlugin:ToggleFullscreen"]
 [ISubPalette,"ZPlugin:ToggleFullscreen:Fullscreen Settings"]
 [ISubPalette,"ZPlugin:ToggleFullscreen:FitCanvas Settings"]
 
+// =============================================================================
+// VARIABLES
+// =============================================================================
+
+// Tracks whether UI is currently hidden (0 = visible, 1 = hidden)
 [VarDef, gIsUiHidden, 0]
+
+// Temporary/utility variables
 [VarDef, WinWidth, 0]
 [VarDef, StartPos, 0]
-// Array: 0=HideMenus, 1=HideTitle, 2=HideNotes, 3=HideBottom, 4=HideUndo, 5=HideFloat, 6=HideLeftTray, 7=HideRightTray, 8=DisablePro
+
+// Remembers whether left/right trays were open before entering fullscreen
+// so they can be correctly restored on exit
+[VarDef, gLeftTrayWasOpen, 0]
+[VarDef, gRightTrayWasOpen, 0]
+
+// Settings array (saved to file):
+//   Index 0 = Hide Menus (top menu bar, ID 1007)
+//   Index 1 = Hide Title (ZBrush title bar, ID 1008)
+//   Index 2 = Hide Notes (top-left notes area, ID 1011)
+//   Index 3 = Hide Bottom (bottom tray edge, ID 1002)
+//   Index 4 = Hide Undo History selector
+//   Index 5 = Hide Floating Palettes
+//   Index 6 = Hide Left Tray (collapse left tray)
+//   Index 7 = Hide Right Tray (collapse right tray)
+//   Index 8 = Disable Document:Pro when fitting canvas
 [VarDef, gSet(9), 1]
 
+// =============================================================================
+// INITIALIZATION
+// =============================================================================
+
+// Load saved settings from file if it exists
 [RoutineDef, InitPlugin,
 	[If, [FileExists, "ToggleFullscreenData/FullscreenSettings.zvr"],
 		[VarLoad, gSet, "ToggleFullscreenData/FullscreenSettings.zvr"]
@@ -16,12 +81,31 @@
 ]
 [RoutineCall, InitPlugin]
 
+// Save current settings to file
 [RoutineDef, SaveSettings,
 	[VarSave, gSet, "ToggleFullscreenData/FullscreenSettings.zvr"]
 ]
 
+// =============================================================================
+// TRAY ROUTINES
+// =============================================================================
+// ZBrush tray buttons (ID 1000 = left, ID 1001 = right) cycle through
+// multiple states (e.g. collapsed, one column, two columns). Each IClick
+// advances to the next state. The routines below click repeatedly and
+// monitor the horizontal position (IHPos) of the tray button to determine
+// when the tray has fully closed or opened.
+//
+// Close logic: click until position changes, then check direction.
+//   If it moved the wrong way (opened instead of closed), click again.
+// Open logic: same approach but checks for the opposite direction.
+// =============================================================================
+
+// --- Right Tray Close ---
+// Collapses the right tray by clicking button ID 1001 until it reaches
+// its fully closed position (button moves left = smaller IHPos value)
 [RoutineDef, RightTrayClose,
     [VarSet, StartPosition, [IHPos, 1001, 1]]
+    // Click until position changes (state transition detected)
     [Loop, 5,
         [VarSet, CurrentPosition, [IHPos, 1001, 1]]
         [If, CurrentPosition = StartPosition,
@@ -31,6 +115,8 @@
         ]
     ]
     [VarSet, NewPosition, [IHPos, 1001, 1]]
+    // If position decreased (moved left), the tray opened instead of closing.
+    // Click again to continue closing.
     [If, NewPosition < StartPosition,
         [VarSet, StartPosition, NewPosition]
         [Loop, 5,
@@ -44,8 +130,42 @@
     ]
 ]
 
+// --- Right Tray Open ---
+// Expands the right tray by clicking button ID 1001 until it reaches
+// its fully open position (button moves left = smaller IHPos value)
+[RoutineDef, RightTrayOpen,
+    [VarSet, StartPosition, [IHPos, 1001, 1]]
+    // Click until position changes
+    [Loop, 5,
+        [VarSet, CurrentPosition, [IHPos, 1001, 1]]
+        [If, CurrentPosition = StartPosition,
+            [IClick, 1001]
+        ,
+            [LoopExit]
+        ]
+    ]
+    [VarSet, NewPosition, [IHPos, 1001, 1]]
+    // If position increased (moved right), the tray closed instead of opening.
+    // Click again to reverse direction.
+    [If, NewPosition > StartPosition,
+        [VarSet, StartPosition, NewPosition]
+        [Loop, 5,
+            [VarSet, CurrentPosition, [IHPos, 1001, 1]]
+            [If, CurrentPosition = StartPosition,
+                [IClick, 1001]
+            ,
+                [LoopExit]
+            ]
+        ]
+    ]
+]
+
+// --- Left Tray Close ---
+// Collapses the left tray by clicking button ID 1000 until it reaches
+// its fully closed position (button moves left = smaller IHPos value)
 [RoutineDef, LeftTrayClose,
     [VarSet, StartPosition, [IHPos, 1000, 1]]
+    // Click until position changes
     [Loop, 5,
         [VarSet, CurrentPosition, [IHPos, 1000, 1]]
         [If, CurrentPosition = StartPosition,
@@ -55,6 +175,8 @@
         ]
     ]
     [VarSet, NewPosition, [IHPos, 1000, 1]]
+    // If position increased (moved right), the tray opened instead of closing.
+    // Click again to continue closing.
     [If, NewPosition > StartPosition,
         [VarSet, StartPosition, NewPosition]
         [Loop, 5,
@@ -68,22 +190,67 @@
     ]
 ]
 
+// --- Left Tray Open ---
+// Expands the left tray by clicking button ID 1000 until it reaches
+// its fully open position (button moves right = larger IHPos value)
+[RoutineDef, LeftTrayOpen,
+    [VarSet, StartPosition, [IHPos, 1000, 1]]
+    // Click until position changes
+    [Loop, 5,
+        [VarSet, CurrentPosition, [IHPos, 1000, 1]]
+        [If, CurrentPosition = StartPosition,
+            [IClick, 1000]
+        ,
+            [LoopExit]
+        ]
+    ]
+    [VarSet, NewPosition, [IHPos, 1000, 1]]
+    // If position decreased (moved left), the tray closed instead of opening.
+    // Click again to reverse direction.
+    [If, NewPosition < StartPosition,
+        [VarSet, StartPosition, NewPosition]
+        [Loop, 5,
+            [VarSet, CurrentPosition, [IHPos, 1000, 1]]
+            [If, CurrentPosition = StartPosition,
+                [IClick, 1000]
+            ,
+                [LoopExit]
+            ]
+        ]
+    ]
+]
+
+// =============================================================================
+// FIT CANVAS ROUTINE
+// =============================================================================
+
+// Resizes the ZBrush document to match the current canvas viewport size.
+// Preserves Edit mode and object transform if active.
 [RoutineDef, FitCanvasToWindow,
     [VarSet, isEdit, 0]
+    // Get current canvas dimensions
     [VarSet, docW, [IWidth, 1004]]
     [VarSet, docH, [IHeight, 1004]]
     [MVarDef, Tmp_Transform, 9, 0]
+
+    // If in Edit mode, save transform and exit Edit temporarily
     [If, [IsEnabled, Transform:Edit],
         [VarSet, isEdit, 1]
         [MTransformGet, Tmp_Transform, 0]
         [IUnPress, Transform:Edit]
         [IPress, Layer:Clear]
     ]
+
+    // Disable WSize (window size lock) and optionally Pro (proportional)
     [IUnPress, Document:WSize]
     [If, #gSet(8), [IUnPress, Document:Pro]]
+
+    // Set new document dimensions and resize
     [ISet, Document:Width, docW]
     [ISet, Document:Height, docH]
     [IKeyPress, 13, [IPress, Document:Resize]]
+
+    // Restore Edit mode and transform if it was active
     [If, isEdit,
         [IPress, Stroke:DragRect]
         [IClick, 1004, 20, 20, 20, 40]
@@ -92,46 +259,83 @@
     ]
 ]
 
-// =============================================
+// =============================================================================
 // BUTTONS
-// =============================================
+// =============================================================================
 
+// --- Fullscreen Toggle Button ---
+// Toggles all configured UI elements on/off.
+// IFreeze prevents UI flickering by batching all changes into one refresh.
 [IButton, "ZPlugin:ToggleFullscreen:Fullscreen", "Toggle Fullscreen View",
-	[If, #gIsUiHidden,
-		[If, #gSet(4), [IPress,   "Preferences:Undo History:Show Undo Selector"]]
-		[If, #gSet(0), [IShow,    "1007"]]
-		[If, #gSet(1), [IShow,    "1008"]]
-		[If, #gSet(2), [IShow,    "1011"]]
-		[If, #gSet(3), [IShow,    "1002"]]
-		[If, #gSet(5), [IPress,   "Preferences:Interface:Float Menu"]]
-		[VarSet, gIsUiHidden, 0]
-	,
-		[If, #gSet(4), [IUnPress, "Preferences:Undo History:Show Undo Selector"]]
-		[If, #gSet(0), [IHide,    "1007"]]
-		[If, #gSet(1), [IHide,    "1008"]]
-		[If, #gSet(2), [IHide,    "1011"]]
-		[If, #gSet(3), [IHide,    "1002"]]
-		[If, #gSet(5), [IUnPress, "Preferences:Interface:Float Menu"]]
-		[If, #gSet(6), [RoutineCall, LeftTrayClose]]
-		[If, #gSet(7), [RoutineCall, RightTrayClose]]
-		[VarSet, gIsUiHidden, 1]
-	]
+    [IFreeze,
+        [If, #gIsUiHidden,
+            // === EXIT FULLSCREEN (restore UI) ===
+            [If, #gSet(4), [IPress,   "Preferences:Undo History:Show Undo Selector"]]
+            [If, #gSet(0), [IShow,    "1007"]]  // Show top menu bar
+            [If, #gSet(1), [IShow,    "1008"]]  // Show title bar
+            [If, #gSet(2), [IShow,    "1011"]]  // Show notes area
+            [If, #gSet(3), [IShow,    "1002"]]  // Show bottom bar
+            [If, #gSet(5), [IPress,   "Preferences:Interface:Float Menu"]]  // Show floating palettes
+
+            // Restore left tray only if it was open before entering fullscreen
+            [If, #gSet(6),
+                [If, #gLeftTrayWasOpen,
+                    [RoutineCall, LeftTrayOpen]
+                ]
+            ]
+            // Restore right tray only if it was open before entering fullscreen
+            [If, #gSet(7),
+                [If, #gRightTrayWasOpen,
+                    [RoutineCall, RightTrayOpen]
+                ]
+            ]
+            [VarSet, gIsUiHidden, 0]
+        ,
+            // === ENTER FULLSCREEN (hide UI) ===
+            [If, #gSet(4), [IUnPress, "Preferences:Undo History:Show Undo Selector"]]
+            [If, #gSet(0), [IHide,    "1007"]]  // Hide top menu bar
+            [If, #gSet(1), [IHide,    "1008"]]  // Hide title bar
+            [If, #gSet(2), [IHide,    "1011"]]  // Hide notes area
+            [If, #gSet(3), [IHide,    "1002"]]  // Hide bottom bar
+            [If, #gSet(5), [IUnPress, "Preferences:Interface:Float Menu"]]  // Hide floating palettes
+
+            // Remember left tray state, then close it.
+            // Compare position before and after to determine if it was open.
+            [If, #gSet(6),
+                [VarSet, tmpPos, [IHPos, 1000, 1]]
+                [RoutineCall, LeftTrayClose]
+                [If, !([IHPos, 1000, 1] = tmpPos),
+                    [VarSet, gLeftTrayWasOpen, 1]  // Position changed = tray was open
+                ,
+                    [VarSet, gLeftTrayWasOpen, 0]  // Position unchanged = tray was already closed
+                ]
+            ]
+            // Remember right tray state, then close it.
+            [If, #gSet(7),
+                [VarSet, tmpPos, [IHPos, 1001, 1]]
+                [RoutineCall, RightTrayClose]
+                [If, !([IHPos, 1001, 1] = tmpPos),
+                    [VarSet, gRightTrayWasOpen, 1]  // Position changed = tray was open
+                ,
+                    [VarSet, gRightTrayWasOpen, 0]  // Position unchanged = tray was already closed
+                ]
+            ]
+            [VarSet, gIsUiHidden, 1]
+        ]
+    ]
 ,, 0.5]
 
+// --- Fit Canvas Button ---
+// Resizes the document to fill the current viewport area
 [IButton, "ZPlugin:ToggleFullscreen:Fit Canvas", "Fit Canvas to Window size",
-    [RoutineCall, FitCanvasToWindow]
+    [IFreeze,
+        [RoutineCall, FitCanvasToWindow]
+    ]
 ,, 0.5]
 
-// =============================================
-// FULLSCREEN SETTINGS
-// =============================================
-
-[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Menus", #gSet(0), "Hide top menu bar",
-	[VarSet, gSet(0), 1] [RoutineCall, SaveSettings]
-,
-	[VarSet, gSet(0), 0] [RoutineCall, SaveSettings]
-, 0, 0.5]
-[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Menus"]
+// =============================================================================
+// FULLSCREEN SETTINGS (toggles for which UI elements to hide)
+// =============================================================================
 
 [ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Title", #gSet(1), "Hide ZBrush title bar",
 	[VarSet, gSet(1), 1] [RoutineCall, SaveSettings]
@@ -140,19 +344,19 @@
 , 0, 0.5]
 [IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Title"]
 
+[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Menus", #gSet(0), "Hide top menu bar",
+	[VarSet, gSet(0), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(0), 0] [RoutineCall, SaveSettings]
+, 0, 0.5]
+[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Menus"]
+
 [ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Notes", #gSet(2), "Hide top-left notes",
 	[VarSet, gSet(2), 1] [RoutineCall, SaveSettings]
 ,
 	[VarSet, gSet(2), 0] [RoutineCall, SaveSettings]
 , 0, 0.5]
 [IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Notes"]
-
-[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Bottom", #gSet(3), "Hide bottom tray edge",
-	[VarSet, gSet(3), 1] [RoutineCall, SaveSettings]
-,
-	[VarSet, gSet(3), 0] [RoutineCall, SaveSettings]
-, 0, 0.5]
-[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Bottom"]
 
 [ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide History", #gSet(4), "Hide Undo History selector",
 	[VarSet, gSet(4), 1] [RoutineCall, SaveSettings]
@@ -168,6 +372,13 @@
 , 0, 0.5]
 [IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Palettes"]
 
+[ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Bottom", #gSet(3), "Hide bottom tray edge",
+	[VarSet, gSet(3), 1] [RoutineCall, SaveSettings]
+,
+	[VarSet, gSet(3), 0] [RoutineCall, SaveSettings]
+, 0, 0.5]
+[IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Bottom"]
+
 [ISwitch, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Left Tray", #gSet(6), "Collapse left tray during Fullscreen",
 	[VarSet, gSet(6), 1] [RoutineCall, SaveSettings]
 ,
@@ -182,9 +393,9 @@
 , 0, 0.5]
 [IEnable, "ZPlugin:ToggleFullscreen:Fullscreen Settings:Hide Right Tray"]
 
-// =============================================
+// =============================================================================
 // FIT CANVAS SETTINGS
-// =============================================
+// =============================================================================
 
 [ISwitch, "ZPlugin:ToggleFullscreen:FitCanvas Settings:Disable Pro (Proportional)", #gSet(8), "Disable Document:Pro when fitting canvas to window",
 	[VarSet, gSet(8), 1] [RoutineCall, SaveSettings]
@@ -193,8 +404,8 @@
 , 0, 1]
 [IEnable, "ZPlugin:ToggleFullscreen:FitCanvas Settings:Disable Pro (Proportional)"]
 
-// =============================================
+// =============================================================================
 // HOT KEYS
-// =============================================
-[ISetHotkey, "ZPlugin:ToggleFullscreen:Fullscreen", 90]// F11
-[ISetHotkey, "ZPlugin:ToggleFullscreen:Fit Canvas", 602]// Ctrl+F11
+// =============================================================================
+[ISetHotkey, "ZPlugin:ToggleFullscreen:Fullscreen", 90]   // F11
+[ISetHotkey, "ZPlugin:ToggleFullscreen:Fit Canvas", 602]  // Ctrl+F11

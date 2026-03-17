@@ -87,8 +87,6 @@ Configure what gets hidden when entering fullscreen:
 | Hide Palettes | Floating palettes (same as Tab) |
 | Hide Left Tray | Collapse left tray |
 | Hide Right Tray | Collapse right tray |
-> ⚠️ **Hide Left Tray / Hide Right Tray** — collapsing trays may cause
-> brief UI flickering during transition. This is expected behavior.
 
 ---
 
